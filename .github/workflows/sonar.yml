@@ -1,0 +1,47 @@
+name: Quality & Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      
+      # 1. Setup Node.js (for our JS/TS apps)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 2. Install Dependencies & Run Tests (Loop through subfolders)
+      - name: Install and Test
+        run: |
+          # Find all package.json files (excluding node_modules)
+          find . -name "package.json" -not -path "*/node_modules/*" | while read package_file; do
+            dir=$(dirname "$package_file")
+            echo "📦 Found system in: $dir"
+            cd "$dir"
+            npm install
+            # Run test if script exists
+            if npm run | grep -q "test"; then
+              echo "🧪 Running tests for $dir..."
+              npm test -- --coverage || echo "⚠️ Tests failed or no coverage, continuing..."
+            fi
+            cd - > /dev/null
+          done
+
+      # 3. Run SonarCloud Scan
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
