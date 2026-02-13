@@ -1,8 +1,8 @@
-name: Universal CI (Jest & Vitest)
+name: CI (Jest + Vitest)
 
 on:
   push:
-    branches: [ "**" ]       # 🟢 RUN ON ALL BRANCHES
+    branches: [ "**" ]       # Runs on ALL branches
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for SonarCloud to detect new vs old code
+          fetch-depth: 0  # Required for SonarCloud
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -21,31 +21,33 @@ jobs:
           node-version: 20
 
       # ----------------------------------------------------------------
-      # 🧪 UNIVERSAL TEST RUNNER (Jest & Vitest)
+      # 🧪 SMART TEST RUNNER
       # ----------------------------------------------------------------
-      - name: Install & Run Tests
+      - name: Run Tests (Jest & Vitest)
         run: |
-          # Loop through all sub-projects (Backend, Web, Mobile)
+          # Loop through all folders containing package.json (excluding node_modules)
           find . -name "package.json" -not -path "*/node_modules/*" | while read package_file; do
             dir=$(dirname "$package_file")
             echo "------------------------------------------------"
-            echo "📦 Processing System: $dir"
+            echo "📦 Found System: $dir"
             echo "------------------------------------------------"
             cd "$dir"
 
             # 1. Install Dependencies
-            npm install
+            npm ci || npm install
 
-            # 2. Check which Test Runner is used (Jest or Vitest)
-            if npm run | grep -q "test"; then
-              echo "🧪 Detected test script. Running..."
-              
-              # Try running with coverage. 
-              # This command works for both 'jest' and 'vitest run' 
-              # IF the package.json script is set up correctly.
-              npm test -- --coverage || echo "⚠️ Tests passed but coverage failed (or not configured). Continuing."
+            # 2. Check for Vitest (Frontend)
+            if grep -q "vitest" package.json; then
+                echo "⚡ Detected VITEST (Frontend). Running..."
+                npx vitest run --coverage --reporter=verbose
+            
+            # 3. Check for Jest (Backend/Mobile)
+            elif grep -q "jest" package.json; then
+                echo "🃏 Detected JEST (Backend/Mobile). Running..."
+                npx jest --coverage --ci --reporters=default
+            
             else
-              echo "⚠️ No 'test' script found in package.json. Skipping."
+                echo "⚠️ No test runner detected in package.json. Skipping."
             fi
             
             cd - > /dev/null
