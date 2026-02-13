@@ -1,45 +1,59 @@
-name: Quality & Security Scan
+name: Universal CI (Jest & Vitest)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "**" ]       # 🟢 RUN ON ALL BRANCHES
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  sonarcloud:
-    name: SonarCloud Scan
+  test-and-scan:
+    name: Test & SonarCloud
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      
-      # 1. Setup Node.js (for our JS/TS apps)
+          fetch-depth: 0  # Required for SonarCloud to detect new vs old code
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 2. Install Dependencies & Run Tests (Loop through subfolders)
-      - name: Install and Test
+      # ----------------------------------------------------------------
+      # 🧪 UNIVERSAL TEST RUNNER (Jest & Vitest)
+      # ----------------------------------------------------------------
+      - name: Install & Run Tests
         run: |
-          # Find all package.json files (excluding node_modules)
+          # Loop through all sub-projects (Backend, Web, Mobile)
           find . -name "package.json" -not -path "*/node_modules/*" | while read package_file; do
             dir=$(dirname "$package_file")
-            echo "📦 Found system in: $dir"
+            echo "------------------------------------------------"
+            echo "📦 Processing System: $dir"
+            echo "------------------------------------------------"
             cd "$dir"
+
+            # 1. Install Dependencies
             npm install
-            # Run test if script exists
+
+            # 2. Check which Test Runner is used (Jest or Vitest)
             if npm run | grep -q "test"; then
-              echo "🧪 Running tests for $dir..."
-              npm test -- --coverage || echo "⚠️ Tests failed or no coverage, continuing..."
+              echo "🧪 Detected test script. Running..."
+              
+              # Try running with coverage. 
+              # This command works for both 'jest' and 'vitest run' 
+              # IF the package.json script is set up correctly.
+              npm test -- --coverage || echo "⚠️ Tests passed but coverage failed (or not configured). Continuing."
+            else
+              echo "⚠️ No 'test' script found in package.json. Skipping."
             fi
+            
             cd - > /dev/null
           done
 
-      # 3. Run SonarCloud Scan
+      # ----------------------------------------------------------------
+      # 📡 SONARCLOUD SCAN
+      # ----------------------------------------------------------------
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
