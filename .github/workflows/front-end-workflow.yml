@@ -48,14 +48,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
-          cache-dependency-path: ${{ inputs.system-dir }}/yarn.lock
+          cache: 'npm'
+          cache-dependency-path: ${{ inputs.system-dir }}/package-lock.json
 
       - name: Install Dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Build Application
-        run: yarn build
+        run: npm run build
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
