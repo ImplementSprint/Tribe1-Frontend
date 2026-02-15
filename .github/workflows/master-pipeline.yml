@@ -1,0 +1,54 @@
+name: Master Pipeline Orchestrator (Web)
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: web-pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 🟢 STAGE 1: pakiPARK-Web
+  pakipark-web:
+    name: pakiPARK-Web Pipeline
+    uses: ./.github/workflows/front-end-workflow.yml
+    with:
+      system-dir: pakiPARK-Web
+      sonar-project-key: Tribe1_Frontend_pakiPARK-Web
+    secrets: inherit
+
+  # 🟢 STAGE 2: pakiSHIP-Web
+  pakiship-web:
+    name: pakiSHIP-Web Pipeline
+    needs: pakipark-web
+    uses: ./.github/workflows/front-end-workflow.yml
+    with:
+      system-dir: pakiSHIP-Web
+      sonar-project-key: Tribe1_Frontend_pakiSHIP-Web
+    secrets: inherit
+
+  # 🚀 STAGE 3: Deploy Staging (Web)
+  deploy-staging-pakipark-web:
+    name: Staging — pakiPARK-Web
+    needs: [pakipark-web, pakiship-web]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    uses: ./.github/workflows/deploy-staging.yml
+    with:
+      system-dir: pakiPARK-Web
+      app-type: web
+      artifact-name: pakiPARK-Web-web-build
+    secrets: inherit
+
+  deploy-staging-pakiship-web:
+    name: Staging — pakiSHIP-Web
+    needs: deploy-staging-pakipark-web
+    if: ${{ !cancelled() && !failure() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') }}
+    uses: ./.github/workflows/deploy-staging.yml
+    with:
+      system-dir: pakiSHIP-Web
+      app-type: web
+      artifact-name: pakiSHIP-Web-web-build
+    secrets: inherit
