@@ -11,44 +11,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 🟢 STAGE 1: pakiPARK-Web
-  pakipark-web:
-    name: pakiPARK-Web Pipeline
+  # 🔄 BUILD STAGE: CampusOne-Web
+  campusoneweb:
+    name: Build CampusOne-Web
     uses: ./.github/workflows/front-end-workflow.yml
     with:
-      system-dir: pakiPARK-Web
-      sonar-project-key: Tribe1_Frontend_pakiPARK-Web
+      system-dir: CampusOne-Web
+      sonar-project-key: Tribe1-Frontend_Web_CampusOne-Web
     secrets: inherit
 
-  # 🟢 STAGE 2: pakiSHIP-Web
-  pakiship-web:
-    name: pakiSHIP-Web Pipeline
-    needs: pakipark-web
-    uses: ./.github/workflows/front-end-workflow.yml
-    with:
-      system-dir: pakiSHIP-Web
-      sonar-project-key: Tribe1_Frontend_pakiSHIP-Web
-    secrets: inherit
-
-  # 🚀 STAGE 3: Deploy Staging (Web)
-  deploy-staging-pakipark-web:
-    name: Staging — pakiPARK-Web
-    needs: [pakipark-web, pakiship-web]
+  # 🚀 DEPLOY STAGE: CampusOne-Web
+  deploy-staging-campusoneweb:
+    name: Deploy Staging — CampusOne-Web
+    needs: campusoneweb
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     uses: ./.github/workflows/deploy-staging.yml
     with:
-      system-dir: pakiPARK-Web
+      system-dir: CampusOne-Web
       app-type: web
-      artifact-name: pakiPARK-Web-web-build
+      artifact-name: CampusOne-Web-web-build
     secrets: inherit
 
-  deploy-staging-pakiship-web:
-    name: Staging — pakiSHIP-Web
-    needs: deploy-staging-pakipark-web
-    if: ${{ !cancelled() && !failure() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') }}
-    uses: ./.github/workflows/deploy-staging.yml
-    with:
-      system-dir: pakiSHIP-Web
-      app-type: web
-      artifact-name: pakiSHIP-Web-web-build
-    secrets: inherit
