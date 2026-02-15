@@ -5,6 +5,7 @@ on:
     branches: ['**']
   pull_request:
     branches: [main, develop]
+  workflow_dispatch: # 👈 Added this to enable the manual 'Run workflow' button
 
 concurrency:
   group: master-pipeline-${{ github.ref }}
@@ -12,7 +13,7 @@ concurrency:
 
 jobs:
   # ╔══════════════════════════════════════════════════════════════╗
-  # ║  STAGE 1 — CampusOne-Web Pipeline                         ║
+  # ║  STAGE 1 — CampusOne-Web Pipeline                          ║
   # ╚══════════════════════════════════════════════════════════════╝
   campusone-web:
     name: CampusOne-Web Pipeline
@@ -23,7 +24,7 @@ jobs:
     secrets: inherit
 
   # ╔══════════════════════════════════════════════════════════════╗
-  # ║  STAGE 2 — Deploy to Staging                               ║
+  # ║  STAGE 2 — Deploy to Staging                                ║
   # ╚══════════════════════════════════════════════════════════════╝
   deploy-staging-campusone-web:
     name: Staging — CampusOne-Web
@@ -48,7 +49,7 @@ jobs:
       - name: Pipeline Results
         run: |
           echo "╔══════════════════════════════════════════════╗"
-          echo "║        MASTER PIPELINE SUMMARY               ║"
+          echo "║         MASTER PIPELINE SUMMARY               ║"
           echo "╠══════════════════════════════════════════════╣"
           echo "║ Branch:   ${{ github.ref_name }}"
           echo "║ Commit:   ${{ github.sha }}"
@@ -63,4 +64,3 @@ jobs:
             exit 1
           fi
           echo "✅ Pipeline completed successfully!"
-
