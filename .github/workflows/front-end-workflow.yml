@@ -21,6 +21,9 @@ on:
         type: number
         default: 80
         description: 'Minimum code coverage percentage required'
+    secrets:
+      SONAR_TOKEN:
+        required: false
 
 jobs:
   # ── Stage 1: Governance Checks ──────────────────────────────────
