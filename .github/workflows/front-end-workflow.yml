@@ -29,7 +29,7 @@ jobs:
   # ── Stage 1: Governance Checks ──────────────────────────────────
   web-governance:
     name: Web — Governance Checks
-    uses: ./.github/workflows/Governance-Check.yml
+    uses: ./.github/workflows/governance-check.yml
     with:
       working-directory: ${{ inputs.system-dir }}
       test-command: 'npx vitest run --coverage --reporter=verbose'
