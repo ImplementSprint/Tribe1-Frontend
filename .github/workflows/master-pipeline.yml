@@ -5,14 +5,21 @@ on:
     branches: ['**']
   pull_request:
     branches: [main, develop]
-  workflow_dispatch:  # 👈 THIS WAS MISSING! Added it back.
+
+# 👇 ADD THIS BLOCK HERE 👇
+permissions:
+  contents: read
+  packages: write
+# 👆 THIS FIXES THE ERROR 👆
 
 concurrency:
   group: master-pipeline-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ── Stage 1: CampusOne-Web Pipeline ─────────────────────────────
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 1 — CampusOne-Web Pipeline                          ║
+  # ╚══════════════════════════════════════════════════════════════╝
   campusone-web:
     name: CampusOne-Web Pipeline
     uses: ./.github/workflows/front-end-workflow.yml
@@ -21,7 +28,9 @@ jobs:
       sonar-project-key: Tribe1-Frontend_CampusOne-Web
     secrets: inherit
 
-  # ── Stage 2: Deploy to Staging ──────────────────────────────────
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 2 — Deploy to Staging                                ║
+  # ╚══════════════════════════════════════════════════════════════╝
   deploy-staging-campusone-web:
     name: Staging — CampusOne-Web
     needs: campusone-web
@@ -33,7 +42,9 @@ jobs:
       artifact-name: CampusOne-Web-web-build
     secrets: inherit
 
-  # ── Stage 3: Pipeline Summary ───────────────────────────────────
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 3 — Pipeline Summary                                ║
+  # ╚══════════════════════════════════════════════════════════════╝
   pipeline-summary:
     name: Pipeline Summary
     needs: campusone-web
@@ -52,8 +63,9 @@ jobs:
           echo "║ CampusOne-Web:     ${{ needs.campusone-web.result }}"
           echo "╚══════════════════════════════════════════════╝"
 
+          # Fail the summary if any pipeline failed
           if [[ "${{ needs.campusone-web.result }}" == "failure" ]]; then
-            echo "❌ Pipeline failed!"
+            echo "❌ One or more pipelines failed!"
             exit 1
           fi
-          echo "✅ Pipeline completed successfully!"
+          echo "✅ All pipelines completed successfully!"
