@@ -66,7 +66,6 @@ jobs:
             -Dsonar.organization=${{ inputs.sonar-organization }}
             -Dsonar.projectKey=${{ inputs.sonar-project-key }}
             -Dsonar.sources=src
-            -Dsonar.tests=src
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
   # ── Stage 3: Build Web Application ─────────────────────────────
