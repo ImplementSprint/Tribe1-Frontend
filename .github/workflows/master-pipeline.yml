@@ -11,16 +11,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 🔄 BUILD STAGE: CampusOne-Web
   campusoneweb:
     name: Build CampusOne-Web
     uses: ./.github/workflows/front-end-workflow.yml
     with:
       system-dir: CampusOne-Web
-      sonar-project-key: Tribe1-Frontend_Web_CampusOne-Web
-    secrets: inherit
+      sonar-project-key: Tribe1_Web_CampusOne-Web
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # 🚀 DEPLOY STAGE: CampusOne-Web
   deploy-staging-campusoneweb:
     name: Deploy Staging — CampusOne-Web
     needs: campusoneweb
