@@ -1,0 +1,70 @@
+name: Governance Checks
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+        description: 'Working directory for the checks'
+      test-command:
+        required: true
+        type: string
+        description: 'Test command to run'
+      coverage-threshold:
+        required: false
+        type: number
+        default: 80
+        description: 'Minimum code coverage percentage'
+
+jobs:
+  governance:
+    name: Governance Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./${{ inputs.working-directory }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # Cache is disabled to prevent "Path not resolved" errors.
+          # Uncomment these lines only after your package-lock.json is 100% stable in the repo.
+          # cache: 'npm'
+          # cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - name: Install Dependencies
+        # We use 'npm install' instead of 'npm ci' so it can fix lockfile mismatches automatically
+        run: npm install
+
+      - name: Run Tests with Coverage
+        run: ${{ inputs.test-command }}
+
+      - name: Check Coverage Threshold
+        run: |
+          if [ -f "coverage/lcov.info" ]; then
+            # Extract coverage percentage (lines)
+            COVERAGE=$(npx lcov --summary coverage/lcov.info | grep "Lines" | awk '{print $2}' | sed 's/%//')
+            
+            # Compare with threshold using bc
+            if (( $(echo "$COVERAGE < ${{ inputs.coverage-threshold }}" | bc -l) )); then
+              echo "❌ Code coverage $COVERAGE% is below threshold ${{ inputs.coverage-threshold }}%"
+              exit 1
+            else
+              echo "✅ Code coverage $COVERAGE% meets threshold ${{ inputs.coverage-threshold }}%"
+            fi
+          else
+            echo "⚠️ Coverage file not found — skipping coverage check"
+          fi
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ${{ inputs.working-directory }}-coverage
+          path: ${{ inputs.working-directory }}/coverage
+          retention-days: 14
