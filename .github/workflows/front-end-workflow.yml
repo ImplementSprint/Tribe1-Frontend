@@ -69,7 +69,7 @@ jobs:
   # ── Stage 3: Build Web Application ─────────────────────────────
   web-build:
     name: Web — Build
-    needs: web-sonarcloud  # 👈 Waits for Sonar
+    needs: web-sonarcloud
     runs-on: ubuntu-latest
     defaults:
       run:
