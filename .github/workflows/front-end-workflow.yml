@@ -35,37 +35,8 @@ jobs:
       test-command: 'npx vitest run --coverage --reporter=verbose'
       coverage-threshold: ${{ inputs.coverage-threshold }}
 
-  # ── Stage 2a: Build Web Application ─────────────────────────────
-  web-build:
-    name: Web — Build
-    needs: web-governance
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./${{ inputs.system-dir }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build Application
-        run: npm run build
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.system-dir }}-web-build
-          path: ${{ inputs.system-dir }}/dist
-          retention-days: 14
-
-  # ── Stage 2b: SonarCloud Quality Gate ───────────────────────────
+  # ── Stage 2: SonarCloud Quality Gate ───────────────────────────
+  # MOVED UP: Must pass BEFORE build starts
   web-sonarcloud:
     name: Web — SonarCloud Analysis
     needs: web-governance
@@ -95,3 +66,40 @@ jobs:
             -Dsonar.sources=src
             -Dsonar.tests=src
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+
+  # ── Stage 3: Build Web Application ─────────────────────────────
+  web-build:
+    name: Web — Build
+    needs: web-sonarcloud  # 👈 CHANGED: Now waits for SonarCloud to pass
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./${{ inputs.system-dir }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # Ensure index.html is in the right place before building
+      - name: Fix Vite Entry Point
+        run: |
+            if [ -f "public/index.html" ] && [ ! -f "index.html" ]; then
+                mv public/index.html .
+            fi
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.system-dir }}-web-build
+          path: ${{ inputs.system-dir }}/dist
+          retention-days: 14
