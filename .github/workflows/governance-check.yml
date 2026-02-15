@@ -16,6 +16,11 @@ on:
         type: number
         default: 80
         description: 'Minimum code coverage percentage'
+      artifact-name:
+        required: false
+        type: string
+        default: 'coverage-report'
+        description: 'Name for the uploaded coverage artifact'
 
 jobs:
   governance:
@@ -32,13 +37,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # Cache is disabled to prevent "Path not resolved" errors.
-          # Uncomment these lines only after your package-lock.json is 100% stable in the repo.
-          # cache: 'npm'
-          # cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
 
       - name: Install Dependencies
-        # We use 'npm install' instead of 'npm ci' so it can fix lockfile mismatches automatically
         run: npm install
 
       - name: Run Tests with Coverage
@@ -47,11 +47,9 @@ jobs:
       - name: Check Coverage Threshold
         run: |
           if [ -f "coverage/lcov.info" ]; then
-            # Extract coverage percentage (lines)
             COVERAGE=$(npx lcov --summary coverage/lcov.info | grep "Lines" | awk '{print $2}' | sed 's/%//')
             
-            # Compare with threshold using bc
-            if (( $(echo "$COVERAGE < ${{ inputs.coverage-threshold }}" | bc -l) )); then
+            if awk "BEGIN {exit !($COVERAGE < ${{ inputs.coverage-threshold }})}"; then
               echo "❌ Code coverage $COVERAGE% is below threshold ${{ inputs.coverage-threshold }}%"
               exit 1
             else
@@ -65,6 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: ${{ inputs.working-directory }}-coverage
+          # 👇 NOW USES THE CUSTOM NAME INPUT
+          name: ${{ inputs.artifact-name }}-coverage
           path: ${{ inputs.working-directory }}/coverage
           retention-days: 14
