@@ -24,7 +24,7 @@ jobs:
     with:
       system-dir: CampusOne-Web  # Used for Naming only
       sonar-project-key: ImplementSprint_Tribe1-Frontend
-      sonar-organization: ImplementSprint-1
+      sonar-organization: implementsprint-1
     secrets: inherit
 
   # ╔══════════════════════════════════════════════════════════════╗
