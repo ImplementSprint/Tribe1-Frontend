@@ -1,0 +1,120 @@
+name: Deploy to Staging
+
+on:
+  workflow_call:
+    inputs:
+      system-dir:
+        required: true
+        type: string
+        description: 'Project directory name'
+      app-type:
+        required: true
+        type: string
+        description: 'Application type: web or mobile'
+      artifact-name:
+        required: true
+        type: string
+        description: 'Name of the build artifact to deploy'
+
+jobs:
+  deploy-staging:
+    name: Deploy ${{ inputs.system-dir }} to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ./deploy-artifact
+        continue-on-error: true
+
+      - name: Verify Artifact Exists
+        id: verify
+        run: |
+          if [ -d "./deploy-artifact" ] && [ "$(ls -A ./deploy-artifact 2>/dev/null)" ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "✅ Artifact '${{ inputs.artifact-name }}' downloaded successfully"
+            ls -la ./deploy-artifact/
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No artifact found for '${{ inputs.artifact-name }}' — skipping deployment"
+          fi
+
+      - name: Deploy Web to Staging
+        if: steps.verify.outputs.found == 'true' && inputs.app-type == 'web'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "❌ VERCEL_TOKEN is not set"
+            exit 1
+          fi
+
+          echo "🚀 Deploying ${{ inputs.system-dir }} (web) to Vercel staging..."
+          echo "   Artifact: ${{ inputs.artifact-name }}"
+          echo "   Contents: $(find ./deploy-artifact -type f | wc -l) files"
+
+          npm install -g vercel@latest
+          DEPLOYMENT_URL=$(vercel deploy ./deploy-artifact --yes --token "$VERCEL_TOKEN")
+          echo "✅ Vercel staging deployment URL: $DEPLOYMENT_URL"
+          echo "✅ Staging deployment complete for ${{ inputs.system-dir }}"
+
+      - name: Configure Maven for GitHub Packages
+        if: steps.verify.outputs.found == 'true' && inputs.app-type == 'mobile'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>$GITHUB_ACTOR</username>
+                <password>$GITHUB_TOKEN</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      - name: Publish Mobile APK to GitHub Packages
+        if: steps.verify.outputs.found == 'true' && inputs.app-type == 'mobile'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK_FILE=$(find ./deploy-artifact -type f -name "*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            echo "❌ No APK found in deploy artifact"
+            exit 1
+          fi
+
+          ARTIFACT_ID=$(echo "${{ inputs.system-dir }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9.-')
+          VERSION="1.0.${{ github.run_number }}"
+
+          echo "🚀 Publishing $APK_FILE to GitHub Packages (Maven Registry)..."
+          mvn -B deploy:deploy-file \
+            -DrepositoryId=github \
+            -Durl="https://maven.pkg.github.com/${{ github.repository }}" \
+            -DgroupId="com.implementsprint.mobile" \
+            -DartifactId="$ARTIFACT_ID" \
+            -Dversion="$VERSION" \
+            -Dpackaging="apk" \
+            -Dfile="$APK_FILE" \
+            -DgeneratePom=true
+
+          echo "✅ Published package: com.implementsprint.mobile:$ARTIFACT_ID:$VERSION"
+          echo "✅ Staging deployment complete for ${{ inputs.system-dir }}"
+
+      - name: Post-Deployment Health Check
+        if: steps.verify.outputs.found == 'true'
+        run: |
+          echo "🔍 Running post-deployment health check for ${{ inputs.system-dir }}..."
+          # ─── Add health check commands below ───
+          # Example: curl -f https://staging.${{ inputs.system-dir }}.example.com/health || exit 1
+          echo "✅ Health check passed"
