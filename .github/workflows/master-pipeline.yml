@@ -5,7 +5,6 @@ on:
     branches: ['**']
   pull_request:
     branches: [main, develop]
-  workflow_dispatch: # 👈 Added this to enable the manual 'Run workflow' button
 
 concurrency:
   group: master-pipeline-${{ github.ref }}
@@ -49,7 +48,7 @@ jobs:
       - name: Pipeline Results
         run: |
           echo "╔══════════════════════════════════════════════╗"
-          echo "║         MASTER PIPELINE SUMMARY               ║"
+          echo "║        MASTER PIPELINE SUMMARY               ║"
           echo "╠══════════════════════════════════════════════╣"
           echo "║ Branch:   ${{ github.ref_name }}"
           echo "║ Commit:   ${{ github.sha }}"
@@ -60,7 +59,7 @@ jobs:
 
           # Fail the summary if any pipeline failed
           if [[ "${{ needs.campusone-web.result }}" == "failure" ]]; then
-            echo "❌ Pipeline failed!"
+            echo "❌ One or more pipelines failed!"
             exit 1
           fi
-          echo "✅ Pipeline completed successfully!"
+          echo "✅ All pipelines completed successfully!"
