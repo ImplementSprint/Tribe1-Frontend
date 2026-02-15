@@ -5,7 +5,10 @@ on:
     branches: ['**']
   pull_request:
     branches: [main, develop]
-  workflow_dispatch:  # 👈 THIS WAS MISSING! Added it back.
+
+permissions:
+  contents: read
+  packages: write
 
 concurrency:
   group: master-pipeline-${{ github.ref }}
@@ -17,7 +20,7 @@ jobs:
     name: CampusOne-Web Pipeline
     uses: ./.github/workflows/front-end-workflow.yml
     with:
-      system-dir: CampusOne-Web
+      system-dir: CampusOne-Web  # Used for Naming only
       sonar-project-key: Tribe1-Frontend_CampusOne-Web
     secrets: inherit
 
